@@ -16,7 +16,7 @@ export function useProgram() {
       commitment: 'confirmed',
     });
 
-    return new Program(idl as any, PROGRAM_ID, provider);
+    return new Program(idl as any, provider);
   }, [connection, wallet]);
 
   return program;
