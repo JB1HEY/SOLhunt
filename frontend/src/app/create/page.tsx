@@ -1,21 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { useRouter } from 'next/navigation';
-import { SystemProgram } from '@solana/web3.js';
+import { SystemProgram, LAMPORTS_PER_SOL as LAMPORTS } from '@solana/web3.js';
+import { BN } from '@coral-xyz/anchor';
 import { useProgram, getTreasuryPda, getBountyPda } from '@/hooks/useProgram';
-import { LAMPORTS_PER_SOL, BOUNTY_CREATION_FEE } from '@/lib/constants';
+import { BOUNTY_CREATION_FEE } from '@/lib/constants';
 
 export default function CreateBounty() {
   const { publicKey } = useWallet();
+  const { connection } = useConnection();
   const program = useProgram();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    requirements: '', // NEW field
+    deliverables: '', // NEW field
     skills: '',
+    category: 'development', // NEW field
     prizeAmount: '',
     deadline: '',
   });
@@ -34,20 +39,26 @@ export default function CreateBounty() {
     setError('');
 
     try {
-      const prizeInLamports = parseFloat(formData.prizeAmount) * LAMPORTS_PER_SOL;
+      // Convert amounts to BN
+      const prizeInSol = parseFloat(formData.prizeAmount);
+      const prizeInLamports = new BN(Math.floor(prizeInSol * LAMPORTS));
       
-      // In production: Upload metadata to IPFS/database
-      // For now, use a simple hash
+      // Generate description hash
       const descriptionHash = `bounty_${Date.now()}_${publicKey.toString().slice(0, 8)}`;
       
+      // Get PDAs
       const [treasuryPda] = getTreasuryPda();
       const [bountyPda] = getBountyPda(publicKey, descriptionHash);
 
-      // Convert deadline to timestamp (optional)
-      const deadlineTimestamp = formData.deadline 
-        ? Math.floor(new Date(formData.deadline).getTime() / 1000)
-        : null;
+      // Handle deadline
+      let deadlineTimestamp = null;
+      if (formData.deadline) {
+        const deadlineMs = new Date(formData.deadline).getTime();
+        deadlineTimestamp = new BN(Math.floor(deadlineMs / 1000));
+      }
 
+      // Create bounty on-chain
+      console.log('Creating bounty on-chain...');
       const tx = await program.methods
         .createBounty(
           descriptionHash,
@@ -60,18 +71,73 @@ export default function CreateBounty() {
           treasury: treasuryPda,
           systemProgram: SystemProgram.programId,
         })
-        .rpc();
+        .rpc({
+            skipPreflight: true,
+            commitment: 'confirmed',
+            maxRetries: 3,
+        });
 
-      console.log('Bounty created! Transaction:', tx);
+      console.log('Bounty created on-chain! Transaction:', tx);
+
+      // ============================================================
+      // ADD THIS: Save metadata to database
+      // ============================================================
+      console.log('Saving metadata to database...');
+      try {
+        const metadataResponse = await fetch('/api/bounties', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bountyPubkey: bountyPda.toString(),
+            companyWallet: publicKey.toString(),
+            title: formData.title,
+            description: formData.description,
+            requirements: formData.requirements,
+            deliverables: formData.deliverables,
+            skillsRequired: formData.skills 
+              ? formData.skills.split(',').map(s => s.trim()).filter(s => s)
+              : [],
+            category: formData.category,
+            deadline: formData.deadline || null,
+            prizeAmount: prizeInSol,
+          }),
+        });
+
+        if (!metadataResponse.ok) {
+          const errorData = await metadataResponse.json();
+          console.error('Failed to save metadata:', errorData);
+          // Don't fail the whole thing if metadata save fails
+          alert('Bounty created on-chain, but metadata save failed. You may need to add details later.');
+        } else {
+          console.log('Metadata saved successfully!');
+        }
+      } catch (metadataError) {
+        console.error('Error saving metadata:', metadataError);
+        // Don't fail the whole thing
+        alert('Bounty created on-chain, but metadata save failed. You may need to add details later.');
+      }
+      // ============================================================
+
+      alert(`Bounty created successfully!\n\nTransaction: ${tx}\n\nRedirecting to bounty page...`);
       
-      // In production: Save metadata to database
-      // await saveMetadata(bountyPda, formData);
+      // Redirect to the bounty page
+      setTimeout(() => {
+        router.push(`/bounty/${bountyPda.toString()}`);
+      }, 1500);
 
-      alert(`Bounty created successfully!\nTransaction: ${tx}`);
-      router.push('/');
     } catch (err: any) {
       console.error('Error creating bounty:', err);
-      setError(err.message || 'Failed to create bounty');
+      
+      let errorMessage = 'Failed to create bounty';
+      if (err.message?.includes('0x1')) {
+        errorMessage = 'Insufficient funds for transaction';
+      } else if (err.message?.includes('User rejected')) {
+        errorMessage = 'Transaction rejected by user';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -115,6 +181,25 @@ export default function CreateBounty() {
             />
           </div>
 
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Category *
+            </label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="development">Development</option>
+              <option value="design">Design</option>
+              <option value="marketing">Marketing</option>
+              <option value="writing">Writing</option>
+              <option value="video">Video/Animation</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -127,11 +212,41 @@ export default function CreateBounty() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="Describe the task, requirements, deliverables, etc."
+              placeholder="Describe the task, context, and what you're looking for..."
             />
             <p className="text-sm text-gray-500 mt-1">
               {formData.description.length} / 5000 characters
             </p>
+          </div>
+
+          {/* Requirements */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Requirements (Optional)
+            </label>
+            <textarea
+              rows={4}
+              maxLength={2000}
+              value={formData.requirements}
+              onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="List any specific requirements or constraints..."
+            />
+          </div>
+
+          {/* Deliverables */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Deliverables (Optional)
+            </label>
+            <textarea
+              rows={4}
+              maxLength={2000}
+              value={formData.deliverables}
+              onChange={(e) => setFormData({ ...formData, deliverables: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="What should hunters deliver? (e.g., source code, design files, etc.)"
+            />
           </div>
 
           {/* Skills */}
@@ -146,6 +261,9 @@ export default function CreateBounty() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="e.g., React, Solidity, Design (comma separated)"
             />
+            <p className="text-sm text-gray-500 mt-1">
+              Separate skills with commas
+            </p>
           </div>
 
           {/* Prize Amount */}
@@ -178,6 +296,7 @@ export default function CreateBounty() {
               value={formData.deadline}
               onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              min={new Date().toISOString().split('T')[0]}
             />
           </div>
 
