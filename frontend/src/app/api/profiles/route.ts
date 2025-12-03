@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Mock mode - set to true to test without Supabase
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 // Mock profile storage (in-memory, resets on server restart)
 const mockProfiles = new Map();
@@ -63,7 +63,10 @@ export async function POST(request: NextRequest) {
     // Real Supabase implementation
     const { createClient } = require('@supabase/supabase-js');
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
       console.error('❌ Supabase not configured');
       return NextResponse.json(
         { error: 'Database not configured' },
@@ -71,10 +74,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    );
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Upsert profile (insert or update)
     const { data: profile, error } = await supabase
@@ -153,7 +153,10 @@ export async function GET(request: NextRequest) {
     // Real Supabase implementation
     const { createClient } = require('@supabase/supabase-js');
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
       console.error('❌ Supabase not configured');
       return NextResponse.json(
         { error: 'Database not configured' },
@@ -161,10 +164,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    );
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { data: profile, error } = await supabase
       .from('profiles')

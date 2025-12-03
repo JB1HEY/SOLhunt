@@ -124,7 +124,7 @@ export default function ProfilePage() {
                 <p className="text-gray-400 mt-1">
                   {offChainProfile?.bio || (onChainProfile
                     ? 'Verified on-chain profile'
-                    : 'New to OpenBounty')}
+                    : 'New to SOLhunt')}
                 </p>
                 <div className="flex items-center space-x-4 mt-3 text-sm text-gray-500">
                   <span className="font-mono text-xs bg-white/5 px-2 py-1 rounded">
@@ -240,7 +240,7 @@ export default function ProfilePage() {
         {isOwnProfile && !onChainProfile && (
           <div className="mt-6 bg-primary/5 border border-primary/20 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-primary mb-2">
-              Welcome to OpenBounty! 🎉
+              Welcome to SOLhunt! 🎉
             </h3>
             <p className="text-gray-300 mb-4">
               Your on-chain profile will be created automatically when you win your first bounty.

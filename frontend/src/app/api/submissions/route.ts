@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,9 +91,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { 
-        success: true, 
-        submission 
+      {
+        success: true,
+        submission
       },
       { status: 201 }
     );
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
     // Now fetch profile data for each submission separately
     if (submissions && submissions.length > 0) {
       const wallets = [...new Set(submissions.map(s => s.hunter_wallet))];
-      
+
       // Try to fetch profiles, but don't fail if table doesn't exist
       try {
         const { data: profiles } = await supabase
@@ -194,9 +194,9 @@ export async function PATCH(request: NextRequest) {
 
     const { error } = await supabase
       .from('submissions')
-      .update({ 
-        status, 
-        reviewed_at: new Date().toISOString() 
+      .update({
+        status,
+        reviewed_at: new Date().toISOString()
       })
       .eq('id', submissionId);
 

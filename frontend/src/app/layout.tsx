@@ -7,7 +7,7 @@ import Navbar from '@/components/Navbar';
 const outfit = Outfit({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'OpenBounty - Decentralized Freelance Platform',
+  title: 'SOLhunt - Decentralized Freelance Platform',
   description: 'Post and complete bounties on Solana',
 };
 

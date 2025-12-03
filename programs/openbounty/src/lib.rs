@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
 
-declare_id!("HjGFLqUQgkEeXmx7G2m8nAZkqKKX66vp6cSkjnHiidiN");
+declare_id!("G5MSUKpKWNzGoHbpphuPS3QsKXUD7EPa54oRDapXxSQ8");
 
 // Constants
 pub const LAMPORTS_PER_SOL: u64 = 1_000_000_000;
