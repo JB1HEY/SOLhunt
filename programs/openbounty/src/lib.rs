@@ -274,7 +274,7 @@ pub struct InitializeTreasury<'info> {
         init,
         payer = authority,
         space = 8 + Treasury::INIT_SPACE,
-        seeds = [b"treasury"],
+        seeds = [b"treasury_v1"],
         bump
     )]
     pub treasury: Account<'info, Treasury>,
@@ -303,7 +303,7 @@ pub struct CreateBounty<'info> {
 
     #[account(
         mut,
-        seeds = [b"treasury"],
+        seeds = [b"treasury_v1"],
         bump = treasury.bump
     )]
     pub treasury: Account<'info, Treasury>,
@@ -321,7 +321,7 @@ pub struct SelectWinner<'info> {
 
     #[account(
         mut,
-        seeds = [b"treasury"],
+        seeds = [b"treasury_v1"],
         bump = treasury.bump
     )]
     pub treasury: Account<'info, Treasury>,
@@ -352,7 +352,7 @@ pub struct ReclaimExpiredBounty<'info> {
 
     #[account(
         mut,
-        seeds = [b"treasury"],
+        seeds = [b"treasury_v1"],
         bump = treasury.bump
     )]
     pub treasury: Account<'info, Treasury>,

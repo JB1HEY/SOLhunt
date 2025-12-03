@@ -12,9 +12,14 @@ export function useProgram() {
   const program = useMemo(() => {
     if (!wallet) return null;
 
-    const provider = new AnchorProvider(connection, wallet, {
-      commitment: 'confirmed',
-    });
+    const provider = new AnchorProvider(
+      connection,
+      wallet as any, // Cast to any to avoid strict type checks that might be missing methods
+      {
+        commitment: 'confirmed',
+        preflightCommitment: 'confirmed',
+      }
+    );
 
     return new Program(idl as any, provider);
   }, [connection, wallet]);
@@ -25,7 +30,7 @@ export function useProgram() {
 // PDA derivation helpers
 export function getTreasuryPda(): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('treasury')],
+    [Buffer.from('treasury_v1')],
     PROGRAM_ID
   );
 }

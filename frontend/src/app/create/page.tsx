@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { useRouter } from 'next/navigation';
-import { SystemProgram, LAMPORTS_PER_SOL as LAMPORTS } from '@solana/web3.js';
+import { SystemProgram, LAMPORTS_PER_SOL as LAMPORTS, Transaction } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
 import { useProgram, getTreasuryPda, getBountyPda } from '@/hooks/useProgram';
 import { BOUNTY_CREATION_FEE } from '@/lib/constants';
@@ -30,8 +30,55 @@ export default function CreateBounty() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Check if treasury exists
+  const [treasuryExists, setTreasuryExists] = useState(true);
+
+  // Check treasury status on mount
+  useState(() => {
+    async function checkTreasury() {
+      if (!program) return;
+      try {
+        const [treasuryPda] = getTreasuryPda();
+        // Cast to any to avoid type error if IDL types aren't perfect
+        const account = await (program.account as any).treasury.fetch(treasuryPda);
+        console.log('Treasury found:', account);
+        setTreasuryExists(true);
+      } catch (e) {
+        console.log('Treasury not found or error:', e);
+        setTreasuryExists(false);
+      }
+    }
+    checkTreasury();
+  });
+
+  async function initializeTreasury() {
+    if (!program || !publicKey) return;
+    try {
+      const [treasuryPda] = getTreasuryPda();
+      const tx = await program.methods
+        .initializeTreasury()
+        .accounts({
+          treasury: treasuryPda,
+          authority: publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      console.log('Treasury initialized:', tx);
+      setTreasuryExists(true);
+      alert('Treasury initialized! You can now post bounties.');
+    } catch (err) {
+      console.error('Error initializing treasury:', err);
+      alert('Failed to initialize treasury');
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!treasuryExists) {
+      setError('Treasury not initialized. Please initialize it first.');
+      return;
+    }
 
     if (!publicKey || !program) {
       setError('Please connect your wallet');
@@ -58,7 +105,16 @@ export default function CreateBounty() {
 
       // Create bounty on-chain
       console.log('Creating bounty on-chain...');
-      const tx = await program.methods
+      console.log('Program ID:', program.programId.toString());
+      console.log('Methods available:', Object.keys(program.methods));
+      console.log('Arguments:', {
+        descriptionHash,
+        prizeInLamports: prizeInLamports.toString(),
+        deadlineTimestamp
+      });
+
+      // Create instruction
+      const ix = await program.methods
         .createBounty(
           descriptionHash,
           prizeInLamports,
@@ -70,11 +126,37 @@ export default function CreateBounty() {
           treasury: treasuryPda,
           systemProgram: SystemProgram.programId,
         })
-        .rpc({
-          skipPreflight: true,
-          commitment: 'confirmed',
-          maxRetries: 3,
-        });
+        .instruction();
+
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      const transaction = new Transaction().add(ix);
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = publicKey;
+
+      console.log('Signing transaction...');
+      // We need the anchor wallet for signing
+      if (!(window as any).solana && !(window as any).phantom) {
+        throw new Error("Wallet not found");
+      }
+
+      // Use the wallet from the hook context if available, but we need to cast it
+      // or use useAnchorWallet in the component.
+      // Since we don't have useAnchorWallet imported in the component yet, let's rely on the provider's wallet
+      // strictly speaking, program.provider.wallet should be the anchor wallet.
+
+      const signedTx = await (program.provider as any).wallet.signTransaction(transaction);
+
+      console.log('Sending transaction...');
+      const tx = await connection.sendRawTransaction(signedTx.serialize(), {
+        skipPreflight: true,
+        maxRetries: 3,
+      });
+
+      await connection.confirmTransaction({
+        signature: tx,
+        blockhash,
+        lastValidBlockHeight
+      }, 'confirmed');
 
       console.log('Bounty created on-chain! Transaction:', tx);
 
@@ -128,6 +210,9 @@ export default function CreateBounty() {
 
     } catch (err: any) {
       console.error('Error creating bounty:', err);
+      if (err.logs) {
+        console.error('Transaction logs:', err.logs);
+      }
 
       let errorMessage = 'Failed to create bounty';
       if (err.message?.includes('0x1')) {
@@ -136,6 +221,11 @@ export default function CreateBounty() {
         errorMessage = 'Transaction rejected by user';
       } else if (err.message) {
         errorMessage = err.message;
+      }
+
+      // Check for specific instruction errors
+      if (JSON.stringify(err).includes('AccountNotInitialized') || JSON.stringify(err).includes('ConstraintSeeds')) {
+        errorMessage = 'Treasury not initialized. Please contact admin.';
       }
 
       setError(errorMessage);
@@ -168,6 +258,22 @@ export default function CreateBounty() {
         </div>
 
         <Card className="border-primary/20 shadow-[0_0_50px_rgba(59,130,246,0.1)]">
+          {!treasuryExists && (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-6 mb-8">
+              <h3 className="text-yellow-500 font-bold mb-2 text-lg">Treasury Not Initialized</h3>
+              <p className="text-gray-400 mb-4">
+                The platform treasury has not been initialized on this network. You must initialize it before creating bounties.
+              </p>
+              <Button
+                type="button"
+                onClick={initializeTreasury}
+                className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
+              >
+                Initialize Treasury
+              </Button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Title */}
             <Input

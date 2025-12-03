@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { Card } from '@/components/ui/Card';
+import { Input, TextArea } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 
 interface SubmissionFormProps {
   bountyId: string;
@@ -10,14 +13,14 @@ interface SubmissionFormProps {
   onSuccess: () => void;
 }
 
-export default function SubmissionForm({ 
-  bountyId, 
+export default function SubmissionForm({
+  bountyId,
   bountyPubkey,
-  bountyTitle, 
-  onSuccess 
+  bountyTitle,
+  onSuccess
 }: SubmissionFormProps) {
   const { publicKey } = useWallet();
-  
+
   const [formData, setFormData] = useState({
     description: '',
     githubUrl: '',
@@ -30,7 +33,7 @@ export default function SubmissionForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
+
     if (!publicKey) {
       setError('Please connect your wallet');
       return;
@@ -89,83 +92,63 @@ export default function SubmissionForm({
   }
 
   return (
-    <div className="bg-white rounded-lg border-2 border-primary/20 p-6">
-      <h3 className="text-2xl font-bold mb-2">Submit Your Work</h3>
-      <p className="text-gray-600 mb-6">
+    <Card className="border-primary/20">
+      <h3 className="text-2xl font-bold mb-2 text-white">Submit Your Work</h3>
+      <p className="text-gray-400 mb-6">
         Submit your completed work for "{bountyTitle}"
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Description */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description * 
-            <span className="text-gray-500 font-normal ml-2">
-              Explain what you built and how it meets the requirements
-            </span>
-          </label>
-          <textarea
-            required
-            rows={6}
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            placeholder="Describe your solution, approach, technologies used, and any challenges you overcame..."
-          />
-        </div>
+        <TextArea
+          label="Description *"
+          required
+          rows={6}
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Describe your solution, approach, technologies used, and any challenges you overcame..."
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Explain what you built and how it meets the requirements
+        </p>
 
         {/* GitHub URL */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            GitHub Repository
-          </label>
-          <input
-            type="url"
-            value={formData.githubUrl}
-            onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            placeholder="https://github.com/username/repo"
-          />
-        </div>
+        <Input
+          label="GitHub Repository"
+          type="url"
+          value={formData.githubUrl}
+          onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
+          placeholder="https://github.com/username/repo"
+        />
 
         {/* Demo URL */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Live Demo / Deployed Link
-          </label>
-          <input
-            type="url"
-            value={formData.demoUrl}
-            onChange={(e) => setFormData({ ...formData, demoUrl: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            placeholder="https://your-demo-site.com"
-          />
-        </div>
+        <Input
+          label="Live Demo / Deployed Link"
+          type="url"
+          value={formData.demoUrl}
+          onChange={(e) => setFormData({ ...formData, demoUrl: e.target.value })}
+          placeholder="https://your-demo-site.com"
+        />
 
         {/* Video URL */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Video Demo (YouTube, Loom, etc.)
-          </label>
-          <input
-            type="url"
-            value={formData.videoUrl}
-            onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            placeholder="https://youtube.com/watch?v=..."
-          />
-        </div>
+        <Input
+          label="Video Demo (YouTube, Loom, etc.)"
+          type="url"
+          value={formData.videoUrl}
+          onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+          placeholder="https://youtube.com/watch?v=..."
+        />
 
         {/* File Upload */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
             Additional Files (Optional)
           </label>
           <input
             type="file"
             multiple
             onChange={handleFileChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-all"
             accept=".pdf,.zip,.png,.jpg,.jpeg"
           />
           <p className="text-sm text-gray-500 mt-1">
@@ -173,8 +156,8 @@ export default function SubmissionForm({
           </p>
           {files.length > 0 && (
             <div className="mt-2">
-              <p className="text-sm font-medium">Selected files:</p>
-              <ul className="text-sm text-gray-600 list-disc list-inside">
+              <p className="text-sm font-medium text-gray-300">Selected files:</p>
+              <ul className="text-sm text-gray-400 list-disc list-inside">
                 {files.map((file, idx) => (
                   <li key={idx}>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</li>
                 ))}
@@ -184,9 +167,9 @@ export default function SubmissionForm({
         </div>
 
         {/* Info Box */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 className="font-semibold text-blue-900 mb-2">Submission Guidelines</h4>
-          <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+          <h4 className="font-semibold text-primary mb-2">Submission Guidelines</h4>
+          <ul className="text-sm text-gray-300 space-y-1 list-disc list-inside">
             <li>Provide a clear description of your work</li>
             <li>Include links to code repositories and demos</li>
             <li>Make sure all links are publicly accessible</li>
@@ -196,25 +179,26 @@ export default function SubmissionForm({
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">{error}</p>
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+            <p className="text-red-400">{error}</p>
           </div>
         )}
 
-        <button
+        <Button
           type="submit"
           disabled={loading || !publicKey}
-          className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          isLoading={loading}
+          className="w-full py-3"
         >
-          {loading ? 'Submitting...' : 'Submit Work'}
-        </button>
+          Submit Work
+        </Button>
 
         {!publicKey && (
-          <p className="text-center text-sm text-gray-600">
+          <p className="text-center text-sm text-gray-500">
             Connect your wallet to submit
           </p>
         )}
       </form>
-    </div>
+    </Card>
   );
 }

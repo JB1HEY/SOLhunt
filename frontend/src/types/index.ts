@@ -10,6 +10,8 @@ export interface Bounty {
   createdAt: number;
   completedAt: number | null;
   submissionHash: string | null;
+  expiryTimestamp: number;
+  expired: boolean;
   bump: number;
 }
 
@@ -45,6 +47,7 @@ export interface Treasury {
   totalBountiesCreated: number;
   totalBountiesCompleted: number;
   totalVolume: number;
+  totalExpiredFundsReclaimed: number;
   bump: number;
 }
 
